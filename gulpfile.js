@@ -5,13 +5,12 @@ const rename = require('gulp-rename');
 const concat = require('gulp-concat');
 const cleanCSS = require('gulp-clean-css');
 const imagemin = require('gulp-imagemin');
-const imageminMozjpeg = require('imagemin-mozjpeg'); // ✅ Correção
 const imageminPngquant = require('imagemin-pngquant');
 const browserSync = require('browser-sync').create();
 const autoprefixer = require('gulp-autoprefixer');
 const clean = require('gulp-clean');
 
-// **📌 Configuração de paths**
+// Configuração de paths
 const paths = {
     root: { www: './public_html' },
     src: {
@@ -32,7 +31,7 @@ const paths = {
     }
 };
 
-// **🟢 Compilar SCSS para CSS**
+// Compilar SCSS para CSS
 gulp.task('sass', function () {
     return gulp.src(paths.src.scss)
         .pipe(sass({ outputStyle: 'expanded' }).on('error', sass.logError))
@@ -41,7 +40,7 @@ gulp.task('sass', function () {
         .pipe(browserSync.stream());
 });
 
-// **🟢 Minificar e Combinar CSS**
+// Minificar e Combinar CSS
 gulp.task('css', function () {
     return gulp.src(paths.src.css)
         .pipe(cleanCSS({ compatibility: 'ie8' }))
@@ -50,7 +49,7 @@ gulp.task('css', function () {
         .pipe(gulp.dest(paths.dist.css));
 });
 
-// **🟢 Minificar e Combinar JS**
+// Minificar e Combinar JS
 gulp.task('js', function () {
     return gulp.src(paths.src.js)
         .pipe(uglify())
@@ -60,37 +59,44 @@ gulp.task('js', function () {
         .pipe(browserSync.stream());
 });
 
-// **🟢 Otimizar Imagens (Correção no uso do `imageminMozjpeg`)**
-gulp.task('img', function () {
-    return gulp.src(paths.src.imgs)
-        .pipe(imagemin([
-            imagemin.gifsicle({ interlaced: true }),
-            imageminMozjpeg({ quality: 75, progressive: true }), // ✅ Correção aplicada
-            imageminPngquant({ quality: [0.6, 0.8] }),
-            imagemin.optipng({ optimizationLevel: 5 }),
-            imagemin.svgo({
-                plugins: [{ removeViewBox: true }, { cleanupIDs: false }]
-            })
-        ]))
-        .pipe(gulp.dest(paths.dist.imgs));
+// Otimizar Imagens (Correção no uso do `imagemin-mozjpeg`)
+gulp.task('img', async function () {
+    try {
+        const imageminMozjpeg = (await import('imagemin-mozjpeg')).default;
+
+        return gulp.src(paths.src.imgs)
+            .pipe(imagemin([
+                imagemin.gifsicle({ interlaced: true }),
+                imageminMozjpeg({ quality: 75, progressive: true }),
+                imageminPngquant({ quality: [0.6, 0.8] }),
+                imagemin.optipng({ optimizationLevel: 5 }),
+                imagemin.svgo({
+                    plugins: [{ removeViewBox: true }, { cleanupIDs: false }]
+                })
+            ]))
+            .pipe(gulp.dest(paths.dist.imgs));
+    } catch (error) {
+        console.error("Erro ao otimizar imagens:", error);
+        throw error;
+    }
 });
 
-// **🟢 Copiar Vendors**
+// Copiar Vendors
 gulp.task('vendors', function () {
     return gulp.src(paths.src.vendors)
         .pipe(gulp.dest(paths.dist.vendors));
 });
 
-// **🟢 Limpar Pasta Dist**
+// Limpar Pasta Dist
 gulp.task('clean', function () {
     return gulp.src(paths.dist.root, { allowEmpty: true, read: false })
         .pipe(clean());
 });
 
-// **🟢 Preparar o Build Completo**
+// Preparar o Build Completo
 gulp.task('build', gulp.series('clean', 'sass', 'css', 'js', 'vendors', 'img'));
 
-// **🟢 Observar Alterações e Recarregar Navegador**
+// Observar Alterações e Recarregar Navegador
 gulp.task('watch', function () {
     browserSync.init({ server: { baseDir: paths.root.www } });
     gulp.watch(paths.src.scss, gulp.series('sass'));
@@ -100,5 +106,5 @@ gulp.task('watch', function () {
     gulp.watch(paths.src.vendors).on('change', browserSync.reload);
 });
 
-// **🟢 Tarefa Padrão**
+// Tarefa Padrão
 gulp.task('default', gulp.series('build', 'watch'));
