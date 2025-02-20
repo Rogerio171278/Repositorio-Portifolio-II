@@ -10,7 +10,7 @@ const browserSync = require('browser-sync').create();
 const autoprefixer = require('gulp-autoprefixer');
 const clean = require('gulp-clean');
 
-// Configuração de paths
+// Configuração de paths (boa prática usar const para paths)
 const paths = {
     root: { www: './public_html' },
     src: {
@@ -31,22 +31,24 @@ const paths = {
     }
 };
 
+// Tarefas individuais (melhor organização)
+
 // Compilar SCSS para CSS
 gulp.task('sass', function () {
     return gulp.src(paths.src.scss)
         .pipe(sass({ outputStyle: 'expanded' }).on('error', sass.logError))
         .pipe(autoprefixer({ overrideBrowserslist: ['last 2 versions'], cascade: false }))
-        .pipe(gulp.dest(paths.src.root + '/css'))
+        .pipe(gulp.dest(paths.src.root + '/css')) // Destino: assets/css (arquivos não minificados)
         .pipe(browserSync.stream());
 });
 
 // Minificar e Combinar CSS
 gulp.task('css', function () {
-    return gulp.src(paths.src.css)
+    return gulp.src(paths.src.css) // Origem: assets/css (arquivos compilados)
         .pipe(cleanCSS({ compatibility: 'ie8' }))
         .pipe(concat('johndoe.css'))
         .pipe(rename({ suffix: '.min' }))
-        .pipe(gulp.dest(paths.dist.css));
+        .pipe(gulp.dest(paths.dist.css)); // Destino: dist/css (arquivos minificados)
 });
 
 // Minificar e Combinar JS
@@ -59,7 +61,7 @@ gulp.task('js', function () {
         .pipe(browserSync.stream());
 });
 
-// Otimizar Imagens (Correção no uso do `imagemin-mozjpeg`)
+// Otimizar Imagens (imagemin-mozjpeg corrigido)
 gulp.task('img', async function () {
     try {
         const imageminMozjpeg = (await import('imagemin-mozjpeg')).default;
@@ -77,7 +79,7 @@ gulp.task('img', async function () {
             .pipe(gulp.dest(paths.dist.imgs));
     } catch (error) {
         console.error("Erro ao otimizar imagens:", error);
-        throw error;
+        throw error; // Importante: lança o erro para o build falhar se a otimização de imagens falhar
     }
 });
 
@@ -93,18 +95,20 @@ gulp.task('clean', function () {
         .pipe(clean());
 });
 
-// Preparar o Build Completo
+// Tarefa de Build (ordem é crucial)
 gulp.task('build', gulp.series('clean', 'sass', 'css', 'js', 'vendors', 'img'));
+
+// Tarefas de Desenvolvimento
 
 // Observar Alterações e Recarregar Navegador
 gulp.task('watch', function () {
     browserSync.init({ server: { baseDir: paths.root.www } });
-    gulp.watch(paths.src.scss, gulp.series('sass'));
-    gulp.watch(paths.src.js).on('change', browserSync.reload);
+    gulp.watch(paths.src.scss, gulp.series('sass')); // Tarefa 'sass' separada para evitar reload excessivo
+    gulp.watch(paths.src.js, gulp.series('js')).on('change', browserSync.reload); // Adicionado 'js'
     gulp.watch(paths.src.html).on('change', browserSync.reload);
-    gulp.watch(paths.src.imgs).on('change', browserSync.reload);
-    gulp.watch(paths.src.vendors).on('change', browserSync.reload);
+    gulp.watch(paths.src.imgs, gulp.series('img')).on('change', browserSync.reload); // Adicionado 'img'
+    gulp.watch(paths.src.vendors, gulp.series('vendors')).on('change', browserSync.reload); // Adicionado 'vendors'
 });
 
-// Tarefa Padrão
+// Tarefa Padrão (executada com 'gulp')
 gulp.task('default', gulp.series('build', 'watch'));
